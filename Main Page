@@ -1,0 +1,947 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bestiary &amp; Field Log</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;1,9..144,500&family=Libre+Franklin:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --parchment:#EFE7D6;
+    --panel:#F7F1E3;
+    --ink:#2B2420;
+    --muted:#6B5F4E;
+    --rust:#A3432A;
+    --moss:#5B6B47;
+    --gold:#B08D57;
+    --hairline: rgba(43,36,32,0.16);
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;}
+  body{
+    margin:0;
+    background:var(--parchment);
+    background-image:
+      radial-gradient(ellipse at top left, rgba(176,141,87,0.10), transparent 60%),
+      radial-gradient(ellipse at bottom right, rgba(91,107,71,0.08), transparent 55%);
+    color:var(--ink);
+    font-family:"Libre Franklin", sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  .font-display{ font-family:"Fraunces", serif; }
+
+  header.top{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:16px;
+    padding:18px clamp(16px,4vw,40px);
+    border-bottom:1px solid var(--hairline);
+    flex-wrap:wrap;
+  }
+  header.top h1{
+    font-family:"Fraunces", serif;
+    font-weight:600;
+    font-size:clamp(22px,3vw,30px);
+    margin:0;
+    letter-spacing:0.2px;
+  }
+  header.top p{
+    margin:2px 0 0;
+    color:var(--muted);
+    font-size:13.5px;
+    font-style:italic;
+    font-family:"Fraunces", serif;
+  }
+  .top-actions{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+
+  .sync-status{
+    display:flex;
+    align-items:center;
+    gap:7px;
+    font-size:12.5px;
+    color:var(--muted);
+    padding:6px 10px;
+    border:1px solid var(--hairline);
+    border-radius:20px;
+    background:var(--panel);
+  }
+  .sync-dot{ width:7px; height:7px; border-radius:50%; background:var(--hairline); flex-shrink:0; }
+  .sync-dot.on{ background:var(--moss); }
+  .sync-dot.pending{ background:var(--gold); }
+  .sync-dot.off{ background:var(--rust); }
+
+  button{
+    font-family:"Libre Franklin", sans-serif;
+    cursor:pointer;
+    border-radius:3px;
+  }
+  .btn{
+    background:var(--ink);
+    color:var(--parchment);
+    border:1px solid var(--ink);
+    padding:9px 16px;
+    font-size:13.5px;
+    font-weight:600;
+  }
+  .btn:hover{ background:#443a30; }
+  .btn.ghost{
+    background:transparent;
+    color:var(--ink);
+    border:1px solid var(--gold);
+  }
+  .btn.ghost:hover{ background:rgba(176,141,87,0.15); }
+  .btn.danger{
+    background:transparent;
+    border:1px solid var(--rust);
+    color:var(--rust);
+  }
+  .btn.danger:hover{ background:rgba(163,67,42,0.10); }
+  .btn.small{ padding:6px 11px; font-size:12.5px; }
+  .btn:disabled{ opacity:0.5; cursor:default; }
+
+  .layout{
+    display:grid;
+    grid-template-columns: 300px 1fr;
+    min-height: calc(100% - 90px);
+  }
+  @media (max-width: 800px){
+    .layout{ grid-template-columns: 1fr; }
+    .index-pane{ border-right:none !important; border-bottom:1px solid var(--hairline); }
+  }
+
+  .index-pane{
+    border-right:1px solid var(--hairline);
+    padding:18px 0;
+    display:flex;
+    flex-direction:column;
+  }
+  .index-controls{ padding:0 18px 14px; border-bottom:1px solid var(--hairline); }
+  .index-controls input[type="text"]{
+    width:100%;
+    padding:8px 10px;
+    border:1px solid var(--hairline);
+    background:var(--panel);
+    color:var(--ink);
+    font-family:"Libre Franklin", sans-serif;
+    font-size:13.5px;
+    border-radius:3px;
+    margin-bottom:8px;
+  }
+  .index-controls select{
+    width:100%;
+    padding:8px 10px;
+    border:1px solid var(--hairline);
+    background:var(--panel);
+    color:var(--ink);
+    font-family:"Libre Franklin", sans-serif;
+    font-size:13.5px;
+    border-radius:3px;
+  }
+  .index-list{ overflow-y:auto; flex:1; }
+  .index-empty{ padding:24px 18px; color:var(--muted); font-size:13.5px; font-style:italic; }
+
+  .index-item{
+    display:block;
+    width:100%;
+    text-align:left;
+    background:none;
+    border:none;
+    border-left:3px solid transparent;
+    padding:12px 16px 12px 15px;
+    border-bottom:1px solid var(--hairline);
+  }
+  .index-item:hover{ background:rgba(176,141,87,0.12); }
+  .index-item.active{
+    background:var(--panel);
+    border-left:3px solid var(--rust);
+  }
+  .index-item .name{
+    font-family:"Fraunces", serif;
+    font-weight:600;
+    font-size:15.5px;
+    display:block;
+  }
+  .index-item .meta{
+    font-size:12px;
+    color:var(--muted);
+    margin-top:2px;
+    display:flex;
+    gap:8px;
+    align-items:center;
+  }
+  .threat-dots{ letter-spacing:1px; color:var(--rust); }
+  .threat-dots .off{ color:var(--hairline); }
+
+  .detail-pane{ padding:clamp(18px,3vw,36px); }
+  .empty-state{
+    color:var(--muted);
+    font-style:italic;
+    font-family:"Fraunces", serif;
+    font-size:17px;
+    padding:60px 10px;
+    text-align:center;
+  }
+
+  .journal-page{
+    background:var(--panel);
+    border:1px solid var(--hairline);
+    border-radius:3px;
+    padding:clamp(18px,3vw,32px);
+  }
+  .journal-head{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-start;
+    gap:16px;
+    border-bottom:1px solid var(--hairline);
+    padding-bottom:16px;
+    margin-bottom:18px;
+  }
+  .journal-head h2{
+    font-family:"Fraunces", serif;
+    font-weight:600;
+    font-size:clamp(24px,3vw,32px);
+    margin:0 0 6px;
+  }
+  .tag-row{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+  .tag{
+    font-size:12px;
+    padding:3px 9px;
+    border:1px solid var(--gold);
+    border-radius:20px;
+    color:var(--moss);
+    background:rgba(91,107,71,0.08);
+  }
+  .journal-head .actions{ display:flex; gap:8px; flex-shrink:0; }
+
+  label{ display:block; font-size:12.5px; color:var(--muted); margin:14px 0 5px; font-weight:600; }
+  label:first-of-type{ margin-top:0; }
+  input[type="text"], input[type="date"], input[type="email"], input[type="password"], textarea, select.field{
+    width:100%;
+    padding:9px 11px;
+    border:1px solid var(--hairline);
+    background:#fff;
+    color:var(--ink);
+    font-family:"Libre Franklin", sans-serif;
+    font-size:14px;
+    border-radius:3px;
+  }
+  textarea{ resize:vertical; min-height:70px; line-height:1.5; }
+  .field-row{ display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+  @media (max-width:560px){ .field-row{ grid-template-columns:1fr; } }
+
+  .section-title{
+    font-family:"Fraunces", serif;
+    font-weight:600;
+    font-size:18px;
+    margin:28px 0 12px;
+    padding-top:20px;
+    border-top:1px solid var(--hairline);
+  }
+
+  .prose{ line-height:1.65; font-size:14.5px; white-space:pre-wrap; }
+  .prose.empty{ color:var(--muted); font-style:italic; }
+
+  .sighting{
+    border:1px solid var(--hairline);
+    border-left:3px solid var(--moss);
+    padding:10px 14px;
+    margin-bottom:10px;
+    border-radius:3px;
+    background:#fff;
+  }
+  .sighting .row1{ display:flex; justify-content:space-between; gap:10px; align-items:baseline; }
+  .sighting .date{ font-weight:600; font-size:13px; }
+  .sighting .loc{ color:var(--muted); font-size:12.5px; }
+  .sighting .note{ margin-top:5px; font-size:13.5px; line-height:1.5; }
+  .sighting .del{ background:none; border:none; color:var(--rust); font-size:12px; padding:2px 4px; }
+
+  .add-sighting{
+    display:grid;
+    grid-template-columns: 140px 1fr auto;
+    gap:8px;
+    margin-top:12px;
+  }
+  .add-sighting textarea{ grid-column:1/3; min-height:50px; }
+  @media (max-width:560px){
+    .add-sighting{ grid-template-columns:1fr; }
+    .add-sighting textarea{ grid-column:1; }
+  }
+
+  dialog{
+    border:1px solid var(--hairline);
+    border-radius:4px;
+    padding:0;
+    max-width:440px;
+    width:92%;
+  }
+  dialog::backdrop{ background:rgba(43,36,32,0.45); }
+  .dialog-body{ padding:22px 24px; max-height:80vh; overflow-y:auto; }
+  .dialog-body h3{ font-family:"Fraunces", serif; margin-top:0; }
+  .dialog-actions{ display:flex; justify-content:flex-end; gap:8px; margin-top:18px; }
+  .dialog-tabs{ display:flex; gap:4px; margin-bottom:16px; border-bottom:1px solid var(--hairline); }
+  .dialog-tab{
+    background:none; border:none; padding:8px 4px; margin-right:14px;
+    font-size:13px; color:var(--muted); border-bottom:2px solid transparent;
+  }
+  .dialog-tab.active{ color:var(--ink); border-bottom-color:var(--rust); font-weight:600; }
+  .sync-error{ background:rgba(163,67,42,0.10); border:1px solid var(--rust); color:var(--rust); padding:9px 11px; border-radius:3px; font-size:12.5px; margin-top:12px; }
+  .sync-note{ font-size:12px; color:var(--muted); line-height:1.5; margin-top:12px; }
+
+  .hint{ font-size:11.5px; color:var(--muted); margin-top:4px; }
+  #importFile{ display:none; }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div>
+    <h1>Bestiary &amp; Field Log</h1>
+    <p>A working catalog of creatures encountered, and every sighting since.</p>
+  </div>
+  <div class="top-actions">
+    <div class="sync-status" id="syncStatus">
+      <span class="sync-dot off" id="syncDot"></span>
+      <span id="syncLabel">Not synced</span>
+    </div>
+    <button class="btn ghost small" id="syncBtn">Sync devices</button>
+    <button class="btn ghost small" id="exportBtn">Export</button>
+    <button class="btn ghost small" id="importBtn">Import</button>
+    <input type="file" id="importFile" accept="application/json">
+    <button class="btn" id="newCreatureBtn">+ New creature</button>
+  </div>
+</header>
+
+<div class="layout">
+  <aside class="index-pane">
+    <div class="index-controls">
+      <input type="text" id="searchInput" placeholder="Search the index…">
+      <select id="categoryFilter">
+        <option value="">All categories</option>
+      </select>
+    </div>
+    <div class="index-list" id="indexList"></div>
+  </aside>
+
+  <main class="detail-pane" id="detailPane">
+    <div class="empty-state">Select a creature from the index, or add a new one to begin the catalog.</div>
+  </main>
+</div>
+
+<dialog id="confirmDialog">
+  <div class="dialog-body">
+    <h3>Remove this entry?</h3>
+    <p style="font-size:13.5px;color:var(--muted);">This deletes the creature and its entire sighting log. This can't be undone.</p>
+    <div class="dialog-actions">
+      <button class="btn ghost small" id="cancelDelete">Cancel</button>
+      <button class="btn danger small" id="confirmDelete">Delete entry</button>
+    </div>
+  </div>
+</dialog>
+
+<dialog id="syncDialog">
+  <div class="dialog-body" id="syncDialogBody"></div>
+</dialog>
+
+<script>
+  // ---------- Local state, rendering, and CRUD (works with or without sync) ----------
+  const STORAGE_KEY = "bestiary_field_log_v1";
+  const CATEGORIES = ["Beast","Undead","Fae","Dragon","Aberration","Construct","Spirit","Humanoid","Other"];
+
+  let state = { creatures: [] };
+  let selectedId = null;
+  let editing = false;
+  let pendingDeleteId = null;
+
+  // sync runtime (populated only if Supabase config exists — see bottom module script)
+  window.__bestiarySync = {
+    ready: false,          // supabase config present
+    user: null,            // signed-in user object or null
+    pushState: null,       // function(state) -> writes to Firestore
+    signUp: null, signIn: null, signOut: null,
+    setConfig: null, getConfig: null, hasConfig: null
+  };
+
+  function loadLocalState(){
+    try{
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if(raw){
+        const parsed = JSON.parse(raw);
+        if(parsed && Array.isArray(parsed.creatures)) state = { creatures: parsed.creatures };
+      }
+    }catch(e){ console.error("Could not read saved data:", e); }
+  }
+
+  function saveLocalState(){
+    try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+    catch(e){ console.error("Could not save data locally:", e); }
+  }
+
+  // Called by every mutation. Saves locally always, and pushes to Firestore if signed in.
+  function persist(){
+    saveLocalState();
+    if(window.__bestiarySync.user && window.__bestiarySync.pushState){
+      window.__bestiarySync.pushState(state);
+    }
+  }
+
+  // Called by the sync module when fresh data arrives from Firestore (another device, or our own confirmed write)
+  window.__applyRemoteState = function(remoteCreatures){
+    state = { creatures: Array.isArray(remoteCreatures) ? remoteCreatures : [] };
+    saveLocalState();
+    renderIndex();
+    renderDetail();
+  };
+
+  function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+
+  function escapeHtml(str){
+    return (str || "").replace(/[&<>"']/g, c => ({
+      "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;"
+    }[c]));
+  }
+
+  function formatDate(iso){
+    if(!iso) return "";
+    const d = new Date(iso + "T00:00:00");
+    if(isNaN(d)) return iso;
+    return d.toLocaleDateString(undefined, { year:"numeric", month:"short", day:"numeric" });
+  }
+
+  // ---------- Index / sidebar ----------
+
+  function populateCategoryFilter(){
+    const sel = document.getElementById("categoryFilter");
+    const current = sel.value;
+    const used = Array.from(new Set(state.creatures.map(c => c.category).filter(Boolean)));
+    const all = Array.from(new Set([...CATEGORIES, ...used]));
+    sel.innerHTML = '<option value="">All categories</option>' +
+      all.map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join("");
+    sel.value = current;
+  }
+
+  function renderIndex(){
+    populateCategoryFilter();
+    const list = document.getElementById("indexList");
+    const q = document.getElementById("searchInput").value.trim().toLowerCase();
+    const cat = document.getElementById("categoryFilter").value;
+
+    let items = state.creatures.filter(c => {
+      const matchesQ = !q || c.name.toLowerCase().includes(q) || (c.category||"").toLowerCase().includes(q);
+      const matchesCat = !cat || c.category === cat;
+      return matchesQ && matchesCat;
+    }).sort((a,b) => a.name.localeCompare(b.name));
+
+    if(items.length === 0){
+      list.innerHTML = `<div class="index-empty">${state.creatures.length === 0 ? "No entries yet. Add your first creature." : "Nothing matches that search."}</div>`;
+      return;
+    }
+
+    list.innerHTML = items.map(c => {
+      const threat = c.threat || 0;
+      let dots = "";
+      for(let i=1;i<=5;i++) dots += `<span class="${i<=threat ? "" : "off"}">●</span>`;
+      return `
+        <button class="index-item ${c.id === selectedId ? "active" : ""}" data-id="${c.id}">
+          <span class="name">${escapeHtml(c.name || "Unnamed creature")}</span>
+          <span class="meta">
+            <span>${escapeHtml(c.category || "Uncategorized")}</span>
+            <span class="threat-dots">${dots}</span>
+          </span>
+        </button>`;
+    }).join("");
+
+    list.querySelectorAll(".index-item").forEach(btn => {
+      btn.addEventListener("click", () => {
+        selectedId = btn.dataset.id;
+        editing = false;
+        renderIndex();
+        renderDetail();
+      });
+    });
+  }
+
+  // ---------- Detail pane ----------
+
+  function getSelected(){
+    return state.creatures.find(c => c.id === selectedId) || null;
+  }
+
+  function renderDetail(){
+    const pane = document.getElementById("detailPane");
+    const c = getSelected();
+
+    if(!c){
+      pane.innerHTML = `<div class="empty-state">Select a creature from the index, or add a new one to begin the catalog.</div>`;
+      return;
+    }
+
+    if(editing){
+      pane.innerHTML = renderEditForm(c);
+      wireEditForm(c);
+    } else {
+      pane.innerHTML = renderView(c);
+      wireView(c);
+    }
+  }
+
+  function renderView(c){
+    const sightings = (c.sightings || []).slice().sort((a,b) => (b.date||"").localeCompare(a.date||""));
+    return `
+      <div class="journal-page">
+        <div class="journal-head">
+          <div>
+            <h2>${escapeHtml(c.name || "Unnamed creature")}</h2>
+            <div class="tag-row">
+              <span class="tag">${escapeHtml(c.category || "Uncategorized")}</span>
+              <span class="tag">Threat ${c.threat || 0}/5</span>
+              ${c.habitat ? `<span class="tag">${escapeHtml(c.habitat)}</span>` : ""}
+            </div>
+          </div>
+          <div class="actions">
+            <button class="btn ghost small" id="editBtn">Edit</button>
+            <button class="btn danger small" id="deleteBtn">Delete</button>
+          </div>
+        </div>
+
+        <label>Description</label>
+        <div class="prose ${c.description ? "" : "empty"}">${escapeHtml(c.description) || "No description recorded yet."}</div>
+
+        <label>Weaknesses &amp; notes</label>
+        <div class="prose ${c.weaknesses ? "" : "empty"}">${escapeHtml(c.weaknesses) || "Nothing recorded yet."}</div>
+
+        <div class="section-title">Sightings log (${sightings.length})</div>
+        <div id="sightingList">
+          ${sightings.length === 0
+            ? `<div class="hint">No sightings logged for this creature yet.</div>`
+            : sightings.map(s => `
+              <div class="sighting" data-sid="${s.id}">
+                <div class="row1">
+                  <span class="date">${formatDate(s.date)}</span>
+                  <button class="del" data-sid="${s.id}">Remove</button>
+                </div>
+                ${s.location ? `<div class="loc">${escapeHtml(s.location)}</div>` : ""}
+                ${s.notes ? `<div class="note">${escapeHtml(s.notes)}</div>` : ""}
+              </div>`).join("")
+          }
+        </div>
+
+        <div class="add-sighting">
+          <input type="date" id="sightingDate">
+          <input type="text" id="sightingLoc" placeholder="Location (optional)">
+          <button class="btn small" id="addSightingBtn">Log sighting</button>
+          <textarea id="sightingNotes" placeholder="What happened…"></textarea>
+        </div>
+      </div>
+    `;
+  }
+
+  function renderEditForm(c){
+    const catOptions = Array.from(new Set([...CATEGORIES, c.category].filter(Boolean)))
+      .map(cat => `<option value="${escapeHtml(cat)}" ${cat === c.category ? "selected" : ""}>${escapeHtml(cat)}</option>`).join("");
+    return `
+      <div class="journal-page">
+        <div class="journal-head">
+          <div style="flex:1;">
+            <label>Name</label>
+            <input type="text" id="fName" value="${escapeHtml(c.name)}" placeholder="Creature name">
+          </div>
+        </div>
+
+        <div class="field-row">
+          <div>
+            <label>Category</label>
+            <select class="field" id="fCategory">${catOptions}</select>
+          </div>
+          <div>
+            <label>Threat level (0–5)</label>
+            <input type="text" id="fThreat" value="${c.threat || 0}" inputmode="numeric">
+          </div>
+        </div>
+
+        <label>Habitat</label>
+        <input type="text" id="fHabitat" value="${escapeHtml(c.habitat || "")}" placeholder="Where it's found">
+
+        <label>Description</label>
+        <textarea id="fDescription" placeholder="Appearance, behavior, lore…">${escapeHtml(c.description || "")}</textarea>
+
+        <label>Weaknesses &amp; notes</label>
+        <textarea id="fWeaknesses" placeholder="How to fight or avoid it…">${escapeHtml(c.weaknesses || "")}</textarea>
+
+        <div class="dialog-actions" style="margin-top:22px;">
+          <button class="btn ghost small" id="cancelEditBtn">Cancel</button>
+          <button class="btn small" id="saveEditBtn">Save entry</button>
+        </div>
+      </div>
+    `;
+  }
+
+  function wireView(c){
+    document.getElementById("editBtn").addEventListener("click", () => {
+      editing = true;
+      renderDetail();
+    });
+    document.getElementById("deleteBtn").addEventListener("click", () => {
+      pendingDeleteId = c.id;
+      document.getElementById("confirmDialog").showModal();
+    });
+    document.getElementById("addSightingBtn").addEventListener("click", () => {
+      const date = document.getElementById("sightingDate").value;
+      const location = document.getElementById("sightingLoc").value.trim();
+      const notes = document.getElementById("sightingNotes").value.trim();
+      if(!date && !location && !notes) return;
+      c.sightings = c.sightings || [];
+      c.sightings.push({ id: uid(), date: date || new Date().toISOString().slice(0,10), location, notes });
+      persist();
+      renderDetail();
+    });
+    document.querySelectorAll(".sighting .del").forEach(btn => {
+      btn.addEventListener("click", () => {
+        c.sightings = (c.sightings || []).filter(s => s.id !== btn.dataset.sid);
+        persist();
+        renderDetail();
+      });
+    });
+  }
+
+  function wireEditForm(c){
+    document.getElementById("cancelEditBtn").addEventListener("click", () => {
+      editing = false;
+      renderDetail();
+    });
+    document.getElementById("saveEditBtn").addEventListener("click", () => {
+      const name = document.getElementById("fName").value.trim();
+      if(!name){ document.getElementById("fName").focus(); return; }
+      c.name = name;
+      c.category = document.getElementById("fCategory").value;
+      let threat = parseInt(document.getElementById("fThreat").value, 10);
+      if(isNaN(threat)) threat = 0;
+      c.threat = Math.max(0, Math.min(5, threat));
+      c.habitat = document.getElementById("fHabitat").value.trim();
+      c.description = document.getElementById("fDescription").value.trim();
+      c.weaknesses = document.getElementById("fWeaknesses").value.trim();
+      editing = false;
+      persist();
+      renderIndex();
+      renderDetail();
+    });
+  }
+
+  // ---------- Top-level actions ----------
+
+  document.getElementById("newCreatureBtn").addEventListener("click", () => {
+    const c = { id: uid(), name: "New creature", category: "Beast", threat: 1, habitat: "", description: "", weaknesses: "", sightings: [] };
+    state.creatures.push(c);
+    selectedId = c.id;
+    editing = true;
+    persist();
+    renderIndex();
+    renderDetail();
+    setTimeout(() => { const el = document.getElementById("fName"); if(el){ el.focus(); el.select(); } }, 0);
+  });
+
+  document.getElementById("searchInput").addEventListener("input", renderIndex);
+  document.getElementById("categoryFilter").addEventListener("change", renderIndex);
+
+  const confirmDialog = document.getElementById("confirmDialog");
+  document.getElementById("cancelDelete").addEventListener("click", () => {
+    pendingDeleteId = null;
+    confirmDialog.close();
+  });
+  document.getElementById("confirmDelete").addEventListener("click", () => {
+    state.creatures = state.creatures.filter(c => c.id !== pendingDeleteId);
+    if(selectedId === pendingDeleteId) selectedId = null;
+    pendingDeleteId = null;
+    editing = false;
+    persist();
+    confirmDialog.close();
+    renderIndex();
+    renderDetail();
+  });
+
+  document.getElementById("exportBtn").addEventListener("click", () => {
+    try{
+      const blob = new Blob([JSON.stringify(state, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "bestiary-export-" + new Date().toISOString().slice(0,10) + ".json";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }catch(e){ alert("Export failed: " + e.message); }
+  });
+
+  document.getElementById("importBtn").addEventListener("click", () => {
+    document.getElementById("importFile").click();
+  });
+  document.getElementById("importFile").addEventListener("change", (ev) => {
+    const file = ev.target.files[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try{
+        const parsed = JSON.parse(reader.result);
+        if(!parsed || !Array.isArray(parsed.creatures)) throw new Error("File doesn't look like a bestiary export.");
+        state = { creatures: parsed.creatures };
+        selectedId = null;
+        editing = false;
+        persist();
+        renderIndex();
+        renderDetail();
+      }catch(e){
+        alert("Couldn't import that file: " + e.message);
+      }
+    };
+    reader.readAsText(file);
+    ev.target.value = "";
+  });
+
+  // ---------- Sync status pill + dialog ----------
+
+  function setSyncStatus(mode, label){
+    // mode: "off" | "pending" | "on"
+    document.getElementById("syncDot").className = "sync-dot " + mode;
+    document.getElementById("syncLabel").textContent = label;
+  }
+
+  function openSyncDialog(){
+    renderSyncDialog();
+    document.getElementById("syncDialog").showModal();
+  }
+
+  function renderSyncDialog(){
+    const body = document.getElementById("syncDialogBody");
+    const sync = window.__bestiarySync;
+
+    if(sync.user){
+      body.innerHTML = `
+        <h3>Sync devices</h3>
+        <p style="font-size:13.5px;color:var(--muted);">Signed in as <strong>${escapeHtml(sync.user.email)}</strong>. Sign in with the same email and password on any other device to see the same bestiary there, live.</p>
+        <div class="dialog-actions">
+          <button class="btn ghost small" id="syncSignOutBtn">Sign out</button>
+          <button class="btn small" id="syncCloseBtn">Done</button>
+        </div>
+      `;
+      document.getElementById("syncSignOutBtn").addEventListener("click", async () => {
+        await sync.signOut();
+        renderSyncDialog();
+      });
+      document.getElementById("syncCloseBtn").addEventListener("click", () => document.getElementById("syncDialog").close());
+      return;
+    }
+
+    if(!sync.hasConfig()){
+      body.innerHTML = `
+        <h3>Sync devices</h3>
+        <p style="font-size:13.5px;color:var(--muted);">To sync across devices, connect a free Supabase project — it's your own private database, nothing shared with anyone else. Paste the Project URL and anon public key from your Supabase project below.</p>
+        <label>Project URL</label><input type="text" id="cfgUrl" placeholder="https://xxxxxxxx.supabase.co">
+        <label>Anon public key</label><input type="text" id="cfgAnonKey" placeholder="eyJhbGciOi…">
+        <div id="cfgError"></div>
+        <div class="dialog-actions">
+          <button class="btn ghost small" id="syncCloseBtn">Cancel</button>
+          <button class="btn small" id="cfgSaveBtn">Save & continue</button>
+        </div>
+        <p class="sync-note">Where to find these: Supabase dashboard → Project Settings → API → Project URL and anon public key.</p>
+      `;
+      document.getElementById("syncCloseBtn").addEventListener("click", () => document.getElementById("syncDialog").close());
+      document.getElementById("cfgSaveBtn").addEventListener("click", () => {
+        const cfg = {
+          url: document.getElementById("cfgUrl").value.trim(),
+          anonKey: document.getElementById("cfgAnonKey").value.trim()
+        };
+        if(!cfg.url || !cfg.anonKey){
+          document.getElementById("cfgError").innerHTML = `<div class="sync-error">Please fill in both the project URL and the anon public key.</div>`;
+          return;
+        }
+        sync.setConfig(cfg);
+        renderSyncDialog();
+      });
+      return;
+    }
+
+    // config present, not signed in: show sign in / sign up tabs
+    let tab = "signin";
+    function renderAuthTab(){
+      body.innerHTML = `
+        <h3>Sync devices</h3>
+        <div class="dialog-tabs">
+          <button class="dialog-tab ${tab==='signin'?'active':''}" data-tab="signin">Sign in</button>
+          <button class="dialog-tab ${tab==='signup'?'active':''}" data-tab="signup">Create account</button>
+        </div>
+        <label>Email</label><input type="email" id="authEmail" placeholder="you@example.com">
+        <label>Password</label><input type="password" id="authPassword" placeholder="At least 6 characters">
+        <div id="authError"></div>
+        <div class="dialog-actions">
+          <button class="btn ghost small" id="syncCloseBtn">Cancel</button>
+          <button class="btn small" id="authSubmitBtn">${tab==='signin' ? 'Sign in' : 'Create account'}</button>
+        </div>
+        <p class="sync-note">This account only protects your own bestiary data — use a password you don't reuse for anything sensitive.</p>
+      `;
+      document.getElementById("syncCloseBtn").addEventListener("click", () => document.getElementById("syncDialog").close());
+      body.querySelectorAll(".dialog-tab").forEach(btn => {
+        btn.addEventListener("click", () => { tab = btn.dataset.tab; renderAuthTab(); });
+      });
+      document.getElementById("authSubmitBtn").addEventListener("click", async () => {
+        const email = document.getElementById("authEmail").value.trim();
+        const password = document.getElementById("authPassword").value;
+        const errBox = document.getElementById("authError");
+        errBox.innerHTML = "";
+        if(!email || !password){
+          errBox.innerHTML = `<div class="sync-error">Enter an email and password.</div>`;
+          return;
+        }
+        try{
+          if(tab === "signin") await sync.signIn(email, password);
+          else await sync.signUp(email, password);
+          renderSyncDialog();
+        }catch(e){
+          errBox.innerHTML = `<div class="sync-error">${escapeHtml(e.message || String(e))}</div>`;
+        }
+      });
+    }
+    renderAuthTab();
+  }
+
+  document.getElementById("syncBtn").addEventListener("click", openSyncDialog);
+
+  // ---------- Init ----------
+  loadLocalState();
+  renderIndex();
+  renderDetail();
+</script>
+
+<script type="module">
+  // Optional cross-device sync. Only activates once the user pastes their own Supabase project URL + anon key.
+  const CONFIG_KEY = "bestiary_supabase_config_v1";
+  const TABLE = "bestiaries";
+
+  function getConfig(){
+    try{ const raw = localStorage.getItem(CONFIG_KEY); return raw ? JSON.parse(raw) : null; }
+    catch(e){ return null; }
+  }
+  function hasConfig(){ return !!getConfig(); }
+  function setConfig(cfg){
+    localStorage.setItem(CONFIG_KEY, JSON.stringify(cfg));
+    initSupabase(cfg);
+  }
+
+  window.__bestiarySync.getConfig = getConfig;
+  window.__bestiarySync.hasConfig = hasConfig;
+  window.__bestiarySync.setConfig = setConfig;
+
+  let supabase = null;
+  let channel = null;
+
+  async function initSupabase(cfg){
+    try{
+      const { createClient } = await import("https://esm.sh/@supabase/supabase-js@2");
+      supabase = createClient(cfg.url, cfg.anonKey);
+
+      window.__bestiarySync.ready = true;
+
+      window.__bestiarySync.signUp = async (email, password) => {
+        const { error } = await supabase.auth.signUp({ email, password });
+        if(error) throw error;
+      };
+      window.__bestiarySync.signIn = async (email, password) => {
+        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        if(error) throw error;
+      };
+      window.__bestiarySync.signOut = async () => {
+        if(channel){ supabase.removeChannel(channel); channel = null; }
+        await supabase.auth.signOut();
+      };
+      window.__bestiarySync.pushState = async (state) => {
+        const { data: { user } } = await supabase.auth.getUser();
+        if(!user) return;
+        try{
+          const { error } = await supabase.from(TABLE).upsert({
+            user_id: user.id,
+            creatures: state.creatures,
+            updated_at: new Date().toISOString()
+          });
+          if(error) throw error;
+        }catch(e){
+          console.error("Sync write failed:", e);
+          setSyncPill("off", "Sync error");
+        }
+      };
+
+      async function handleSignedIn(user){
+        window.__bestiarySync.user = user;
+        setSyncPill("pending", "Connecting…");
+
+        // load current remote row, or seed it from local state if this is a brand-new account
+        const { data, error } = await supabase.from(TABLE).select("creatures").eq("user_id", user.id).maybeSingle();
+        if(error){
+          console.error("Sync read failed:", error);
+          setSyncPill("off", "Sync error");
+          return;
+        }
+        if(data){
+          window.__applyRemoteState(data.creatures || []);
+        } else {
+          await window.__bestiarySync.pushState(window.__bestiaryCurrentState());
+        }
+        setSyncPill("on", "Synced as " + user.email);
+
+        if(channel) supabase.removeChannel(channel);
+        channel = supabase
+          .channel("bestiary-" + user.id)
+          .on("postgres_changes", {
+            event: "*", schema: "public", table: TABLE, filter: "user_id=eq." + user.id
+          }, (payload) => {
+            const row = payload.new;
+            if(row && Array.isArray(row.creatures)){
+              window.__applyRemoteState(row.creatures);
+            }
+            setSyncPill("on", "Synced as " + user.email);
+          })
+          .subscribe();
+      }
+
+      supabase.auth.onAuthStateChange((event, session) => {
+        if(session && session.user){
+          handleSignedIn(session.user);
+        } else {
+          window.__bestiarySync.user = null;
+          if(channel){ supabase.removeChannel(channel); channel = null; }
+          setSyncPill("off", "Not synced");
+        }
+      });
+
+      const { data: { session } } = await supabase.auth.getSession();
+      if(session && session.user) handleSignedIn(session.user);
+
+    }catch(e){
+      console.error("Could not initialize sync:", e);
+      setSyncPill("off", "Sync unavailable");
+    }
+  }
+
+  function setSyncPill(mode, label){
+    const dot = document.getElementById("syncDot");
+    const lbl = document.getElementById("syncLabel");
+    if(!dot || !lbl) return;
+    if(!mode){ mode = "pending"; label = "Connecting…"; }
+    dot.className = "sync-dot " + mode;
+    lbl.textContent = label;
+  }
+
+  // expose current in-memory state for first-sync seed, without tightly coupling modules
+  window.__bestiaryCurrentState = function(){
+    try{ return JSON.parse(localStorage.getItem("bestiary_field_log_v1")) || { creatures: [] }; }
+    catch(e){ return { creatures: [] }; }
+  };
+
+  const existing = getConfig();
+  if(existing) initSupabase(existing);
+</script>
+
+</body>
+</html>
