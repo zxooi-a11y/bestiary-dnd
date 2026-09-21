@@ -781,8 +781,14 @@
           <button class="btn small" id="authSubmitBtn">${tab==='signin' ? 'Sign in' : 'Create account'}</button>
         </div>
         <p class="sync-note">This account only protects your own bestiary data — use a password you don't reuse for anything sensitive.</p>
+        <p class="sync-note"><a href="#" id="editConnectionLink">Wrong project, or getting a connection error? Edit connection details</a></p>
       `;
       document.getElementById("syncCloseBtn").addEventListener("click", () => document.getElementById("syncDialog").close());
+      document.getElementById("editConnectionLink").addEventListener("click", (ev) => {
+        ev.preventDefault();
+        sync.clearConfig();
+        location.reload();
+      });
       body.querySelectorAll(".dialog-tab").forEach(btn => {
         btn.addEventListener("click", () => { tab = btn.dataset.tab; renderAuthTab(); });
       });
@@ -829,10 +835,14 @@
     localStorage.setItem(CONFIG_KEY, JSON.stringify(cfg));
     initSupabase(cfg);
   }
+  function clearConfig(){
+    localStorage.removeItem(CONFIG_KEY);
+  }
 
   window.__bestiarySync.getConfig = getConfig;
   window.__bestiarySync.hasConfig = hasConfig;
   window.__bestiarySync.setConfig = setConfig;
+  window.__bestiarySync.clearConfig = clearConfig;
 
   let supabase = null;
   let channel = null;
